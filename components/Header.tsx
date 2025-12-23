@@ -51,18 +51,15 @@ const Header: React.FC<HeaderProps> = ({
           <span className="material-symbols-outlined text-[20px]">hub</span>
         </div>
         <div className="relative">
-          <div className="flex flex-col">
+          <div className="flex items-baseline gap-2">
             <h1
               onClick={onEditMetadata}
-              className="text-sm font-bold text-gray-900 leading-tight cursor-pointer hover:text-[#137fec] transition-colors"
+              className="text-sm font-bold text-gray-900 leading-tight cursor-pointer hover:text-[#137fec] transition-colors whitespace-nowrap"
             >
-              {metadata.firstName ? `${metadata.firstName} ${metadata.lastName}` : diagramName}
+              {metadata.firstName
+                ? `${metadata.firstName} ${metadata.lastName} - ${metadata.group} - ${metadata.topic}`
+                : diagramName}
             </h1>
-            {metadata.topic && (
-              <span className="text-[10px] text-gray-400 font-bold uppercase tracking-tight -mt-0.5">
-                {metadata.group} • {metadata.topic}
-              </span>
-            )}
           </div>
 
           <nav className="flex gap-3 text-[11px] text-gray-500 font-medium mt-0.5">

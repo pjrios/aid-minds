@@ -384,7 +384,7 @@ const App: React.FC = () => {
         metadata={state.metadata}
         onSave={(metadata) => {
           pushToHistory();
-          setState(p => ({ ...p, metadata, diagramName: `${metadata.firstName} ${metadata.lastName} - ${metadata.topic}` }));
+          setState(p => ({ ...p, metadata, diagramName: `${metadata.firstName} ${metadata.lastName} - ${metadata.group} - ${metadata.topic}` }));
           setIsMetadataModalOpen(false);
         }}
       />

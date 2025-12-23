@@ -68,7 +68,7 @@ const MetadataModal: React.FC<MetadataModalProps> = ({ isOpen, onClose, metadata
                             className="w-full px-4 py-2 bg-gray-50 border border-gray-200 rounded-lg text-sm outline-none focus:border-[#137fec] focus:ring-4 focus:ring-[#137fec]/10 transition-all font-medium"
                             value={formData.group}
                             onChange={e => setFormData(prev => ({ ...prev, group: e.target.value }))}
-                            placeholder="e.g. A1, Team Beta"
+                            placeholder="e.g. 6A, 7B, 8C, 9D"
                         />
                     </div>
 
