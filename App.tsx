@@ -1,5 +1,6 @@
 
-import React, { useState, useCallback, useEffect } from 'react';
+import React, { useState, useCallback, useEffect, useRef } from 'react';
+import { toPng } from 'html-to-image';
 import Header from './components/Header';
 import Toolbar from './components/Toolbar';
 import SidebarLeft from './components/SidebarLeft';
@@ -28,6 +29,7 @@ const INITIAL_NODES: DiagramNode[] = [
 ];
 
 const App: React.FC = () => {
+  const canvasRef = useRef<HTMLDivElement>(null);
   const [state, setState] = useState<AppState>({
     diagramName: 'Untitled Diagram',
     nodes: INITIAL_NODES,
@@ -46,10 +48,10 @@ const App: React.FC = () => {
   const pushToHistory = useCallback(() => {
     setState(prev => ({
       ...prev,
-      history: [...prev.history, { 
-        nodes: [...prev.nodes], 
+      history: [...prev.history, {
+        nodes: [...prev.nodes],
         connections: [...prev.connections],
-        diagramName: prev.diagramName 
+        diagramName: prev.diagramName
       }].slice(-50),
       future: []
     }));
@@ -146,7 +148,7 @@ const App: React.FC = () => {
     const id = `conn_${Date.now()}`;
     setState(prev => ({
       ...prev,
-      connections: [...prev.connections, { 
+      connections: [...prev.connections, {
         id, from, to, color: '#9ca3af', strokeWidth: 2, arrowEnd: true, lineStyle: 'solid', text: ''
       }]
     }));
@@ -229,6 +231,34 @@ const App: React.FC = () => {
     URL.revokeObjectURL(url);
   }, [state]);
 
+  const handleExportImage = useCallback(async () => {
+    if (!canvasRef.current) return;
+
+    try {
+      // Hide UI elements during capture
+      const uiElements = canvasRef.current.querySelectorAll('.z-30, .z-40');
+      uiElements.forEach(el => (el as HTMLElement).style.display = 'none');
+
+      const dataUrl = await toPng(canvasRef.current, {
+        backgroundColor: '#f6f7f8',
+        style: {
+          borderRadius: '0',
+        }
+      });
+
+      // Restore UI elements
+      uiElements.forEach(el => (el as HTMLElement).style.display = '');
+
+      const link = document.createElement('a');
+      link.download = `${state.diagramName.replace(/\s+/g, '_')}.png`;
+      link.href = dataUrl;
+      link.click();
+    } catch (err) {
+      console.error('Export image failed:', err);
+      alert('Failed to export image. Please try again.');
+    }
+  }, [state.diagramName]);
+
   const handleImport = useCallback(() => {
     const input = document.createElement('input');
     input.type = 'file';
@@ -262,22 +292,23 @@ const App: React.FC = () => {
 
   return (
     <div className="flex flex-col h-screen w-screen bg-[#f6f7f8] overflow-hidden select-none">
-      <Header 
+      <Header
         diagramName={state.diagramName}
         setDiagramName={(name) => setState(p => ({ ...p, diagramName: name }))}
         onNew={handleNew}
         onImport={handleImport}
         onExport={handleExport}
+        onExportImage={handleExportImage}
         onUndo={handleUndo}
         onRedo={handleRedo}
         onDelete={handleDeleteSelected}
         onResetView={() => setState(p => ({ ...p, zoom: 1, pan: { x: 50, y: 50 } }))}
         onEditStateChange={setIsAnyEditing}
       />
-      <Toolbar 
+      <Toolbar
         activeTool={state.activeTool}
         onToolChange={handleToolChange}
-        zoom={state.zoom} 
+        zoom={state.zoom}
         onZoomIn={() => setState(p => ({ ...p, zoom: Math.min(3, p.zoom + 0.1) }))}
         onZoomOut={() => setState(p => ({ ...p, zoom: Math.max(0.2, p.zoom - 0.1) }))}
         onUndo={handleUndo}
@@ -285,14 +316,14 @@ const App: React.FC = () => {
         canUndo={state.history.length > 0}
         canRedo={state.future.length > 0}
       />
-      
+
       <div className="flex flex-1 overflow-hidden relative">
         <SidebarLeft onAddShape={handleAddNode} />
-        
-        <main className="flex-1 relative overflow-hidden bg-grid">
-          <Canvas 
-            state={state} 
-            onSelectNode={handleSelectNode} 
+
+        <main ref={canvasRef} className="flex-1 relative overflow-hidden bg-grid">
+          <Canvas
+            state={state}
+            onSelectNode={handleSelectNode}
             onSelectConnection={handleSelectConnection}
             onUpdateNode={handleUpdateNode}
             onAddConnection={handleAddConnection}
@@ -301,10 +332,10 @@ const App: React.FC = () => {
             onEditStateChange={setIsAnyEditing}
           />
         </main>
-        
+
         {(selectedNode || selectedConnection) && (
-          <SidebarRight 
-            node={selectedNode} 
+          <SidebarRight
+            node={selectedNode}
             connection={selectedConnection}
             onUpdateNode={(updates) => handleUpdateNode(selectedNode!.id, updates)}
             onUpdateConnection={(updates) => handleUpdateConnection(selectedConnection!.id, updates)}

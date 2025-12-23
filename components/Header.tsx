@@ -7,6 +7,7 @@ interface HeaderProps {
   onNew: () => void;
   onImport: () => void;
   onExport: () => void;
+  onExportImage: () => void;
   onUndo: () => void;
   onRedo: () => void;
   onDelete: () => void;
@@ -14,8 +15,8 @@ interface HeaderProps {
   onEditStateChange?: (isEditing: boolean) => void;
 }
 
-const Header: React.FC<HeaderProps> = ({ 
-  diagramName, setDiagramName, onNew, onImport, onExport, 
+const Header: React.FC<HeaderProps> = ({
+  diagramName, setDiagramName, onNew, onImport, onExport, onExportImage,
   onUndo, onRedo, onDelete, onResetView, onEditStateChange
 }) => {
   const [activeMenu, setActiveMenu] = useState<string | null>(null);
@@ -38,6 +39,7 @@ const Header: React.FC<HeaderProps> = ({
       { label: 'New Diagram', action: onNew },
       { label: 'Import JSON...', action: onImport },
       { label: 'Export as JSON...', action: onExport },
+      { label: 'Export as Image...', action: onExportImage },
     ],
     Edit: [
       { label: 'Undo', action: onUndo },
@@ -71,18 +73,18 @@ const Header: React.FC<HeaderProps> = ({
               className="text-sm font-bold text-gray-900 leading-tight border-b-2 border-[#137fec] outline-none bg-transparent w-48"
             />
           ) : (
-            <h1 
+            <h1
               onClick={() => setIsEditingName(true)}
               className="text-sm font-bold text-gray-900 leading-tight cursor-text hover:text-[#137fec] transition-colors"
             >
               {diagramName}
             </h1>
           )}
-          
+
           <nav className="flex gap-3 text-[11px] text-gray-500 font-medium mt-0.5">
             {Object.keys(menuItems).map(menu => (
               <div key={menu} className="relative">
-                <button 
+                <button
                   onMouseDown={() => setActiveMenu(activeMenu === menu ? null : menu)}
                   className={`hover:text-[#137fec] outline-none ${activeMenu === menu ? 'text-[#137fec]' : ''}`}
                 >
@@ -109,19 +111,19 @@ const Header: React.FC<HeaderProps> = ({
           </nav>
         </div>
       </div>
-      
+
       <div className="hidden lg:flex items-center gap-2 text-xs text-gray-400">
         <span className="material-symbols-outlined text-[16px]">cloud_done</span>
         <span>All changes saved</span>
       </div>
 
       <div className="flex items-center gap-4">
-        <div className="flex -space-x-2">
-          <img className="w-8 h-8 rounded-full border-2 border-white" src="https://picsum.photos/seed/u1/64" alt="User" />
-          <img className="w-8 h-8 rounded-full border-2 border-white" src="https://picsum.photos/seed/u2/64" alt="User" />
-        </div>
-        <button className="px-4 py-1.5 bg-[#137fec] text-white text-sm font-bold rounded-lg hover:bg-[#137fec]/90 transition-colors shadow-sm">
-          Share
+        <button
+          onClick={onExportImage}
+          className="flex items-center gap-2 px-4 py-1.5 bg-[#137fec] text-white text-sm font-bold rounded-lg hover:bg-[#137fec]/90 transition-colors shadow-sm"
+        >
+          <span className="material-symbols-outlined text-[18px]">download</span>
+          Export as Image
         </button>
       </div>
     </header>
