@@ -243,7 +243,11 @@ const App: React.FC = () => {
         backgroundColor: '#f6f7f8',
         style: {
           borderRadius: '0',
-        }
+          margin: '0',
+          padding: '0',
+        },
+        skipLinks: true, // Skip processing some links that might cause CORS issues
+        cacheBust: true,
       });
 
       // Restore UI elements
