@@ -40,7 +40,7 @@ const Header: React.FC<HeaderProps> = ({
     ],
     Help: [
       { label: 'Shortcuts Guide', action: () => alert('Shift+Drag: Pan\nDelete/Backspace: Remove Selected\nCtrl+Z/Y: Undo/Redo') },
-      { label: 'About MindFlow', action: () => alert('MindFlow Studio v1.0\nA clean diagramming tool.') },
+      { label: 'About AIDMinds Studio', action: () => alert('AIDMinds Studio v1.0\nA clean diagramming tool.') },
     ]
   };
 

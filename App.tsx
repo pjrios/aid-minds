@@ -205,6 +205,38 @@ const App: React.FC = () => {
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [handleDeleteSelected, handleUndo, handleRedo, isAnyEditing, handleToolChange]);
 
+  // Persistence logic
+  useEffect(() => {
+    const saved = localStorage.getItem('aidminds_diagram_data');
+    if (saved) {
+      try {
+        const data = JSON.parse(saved);
+        setState(prev => ({
+          ...prev,
+          diagramName: data.diagramName || prev.diagramName,
+          metadata: data.metadata || prev.metadata,
+          nodes: data.nodes || prev.nodes,
+          connections: data.connections || prev.connections,
+        }));
+      } catch (e) {
+        console.error('Failed to load saved diagram:', e);
+      }
+    }
+  }, []);
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      const dataToSave = {
+        diagramName: state.diagramName,
+        metadata: state.metadata,
+        nodes: state.nodes,
+        connections: state.connections,
+      };
+      localStorage.setItem('aidminds_diagram_data', JSON.stringify(dataToSave));
+    }, 1000);
+    return () => clearTimeout(timer);
+  }, [state.diagramName, state.metadata, state.nodes, state.connections]);
+
   const handleNew = useCallback(() => {
     if (confirm('Create a new diagram? All unsaved changes will be lost.')) {
       setState({
