@@ -42,6 +42,7 @@ const App: React.FC = () => {
     activeTool: 'select',
     zoom: 1,
     pan: { x: 50, y: 50 },
+    isDarkMode: false,
     history: [],
     future: [],
   });
@@ -184,6 +185,14 @@ const App: React.FC = () => {
   }, []);
 
   useEffect(() => {
+    if (state.isDarkMode) {
+      document.documentElement.classList.add('dark');
+    } else {
+      document.documentElement.classList.remove('dark');
+    }
+  }, [state.isDarkMode]);
+
+  useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (isAnyEditing) return;
       if (e.key === 'Delete' || e.key === 'Backspace') {
@@ -217,6 +226,7 @@ const App: React.FC = () => {
           metadata: data.metadata || prev.metadata,
           nodes: data.nodes || prev.nodes,
           connections: data.connections || prev.connections,
+          isDarkMode: data.isDarkMode ?? prev.isDarkMode,
         }));
       } catch (e) {
         console.error('Failed to load saved diagram:', e);
@@ -231,6 +241,7 @@ const App: React.FC = () => {
         metadata: state.metadata,
         nodes: state.nodes,
         connections: state.connections,
+        isDarkMode: state.isDarkMode,
       };
       localStorage.setItem('aidminds_diagram_data', JSON.stringify(dataToSave));
     }, 1000);
@@ -249,6 +260,7 @@ const App: React.FC = () => {
         activeTool: 'select',
         zoom: 1,
         pan: { x: 50, y: 50 },
+        isDarkMode: state.isDarkMode,
         history: [],
         future: [],
       });
@@ -357,6 +369,8 @@ const App: React.FC = () => {
       <Header
         diagramName={state.diagramName}
         metadata={state.metadata}
+        isDarkMode={state.isDarkMode}
+        onToggleDarkMode={() => setState(p => ({ ...p, isDarkMode: !p.isDarkMode }))}
         onEditMetadata={() => setIsMetadataModalOpen(true)}
         onNew={handleNew}
         onImport={handleImport}

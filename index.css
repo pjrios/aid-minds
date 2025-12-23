@@ -5,11 +5,22 @@ body {
     margin: 0;
     padding: 0;
     overflow: hidden;
+    transition: background-color 0.3s ease;
+}
+
+.dark body {
+    background-color: #0f172a;
+    color: #f1f5f9;
 }
 
 .bg-grid {
     background-image: radial-gradient(#d1d5db 1px, transparent 1px);
     background-size: 20px 20px;
+    transition: background-image 0.3s ease;
+}
+
+.dark .bg-grid {
+    background-image: radial-gradient(#334155 1px, transparent 1px);
 }
 
 .no-select {

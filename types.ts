@@ -56,6 +56,7 @@ export interface AppState {
   activeTool: InteractionTool;
   zoom: number;
   pan: { x: number; y: number };
+  isDarkMode: boolean;
   history: HistoryItem[];
   future: HistoryItem[];
 }

@@ -1,5 +1,5 @@
-
-import React, { useRef, useState, useEffect } from 'react';
+import React, { useRef, useState, useEffect, useCallback } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
 import { AppState, DiagramNode, ShapeType, Connection } from '../types';
 
 interface CanvasProps {
@@ -16,7 +16,13 @@ interface CanvasProps {
 type InteractionMode = 'none' | 'dragging' | 'resizing' | 'connecting' | 'panning';
 
 const ShapeRenderer: React.FC<{ node: DiagramNode; isSelected: boolean }> = ({ node, isSelected }) => {
-  const { width, height, type, fill, stroke, strokeWidth } = node;
+  const { width, height, type, fill: originalFill, stroke: originalStroke, strokeWidth } = node;
+  const isDark = document.documentElement.classList.contains('dark');
+
+  // Theme-aware default colors
+  const fill = (isDark && originalFill === '#ffffff') ? '#1e293b' : originalFill;
+  const stroke = (isDark && (originalStroke === '#111418' || originalStroke === '#000000')) ? '#94a3b8' : originalStroke;
+
   const sWidth = isSelected ? Math.max(strokeWidth, 2.5) : strokeWidth;
   const sColor = isSelected ? '#137fec' : stroke;
 
@@ -50,6 +56,10 @@ const ShapeRenderer: React.FC<{ node: DiagramNode; isSelected: boolean }> = ({ n
       return <rect x={0} y={0} width={width} height={height} rx={6} ry={6} fill={fill} stroke={sColor} strokeWidth={sWidth} />;
   }
 };
+const GRID_SIZE = 20;
+const SNAP_THRESHOLD = 5;
+
+const snapToGrid = (val: number) => Math.round(val / GRID_SIZE) * GRID_SIZE;
 
 const Canvas: React.FC<CanvasProps> = ({ state, onSelectNode, onSelectConnection, onUpdateNode, onAddConnection, onPan, onPushHistory, onEditStateChange }) => {
   const [mode, setMode] = useState<InteractionMode>('none');
@@ -57,6 +67,7 @@ const Canvas: React.FC<CanvasProps> = ({ state, onSelectNode, onSelectConnection
   const [editingId, setEditingId] = useState<string | null>(null);
   const [tempConn, setTempConn] = useState<{ x1: number; y1: number; x2: number; y2: number } | null>(null);
   const [hoveredConnId, setHoveredConnId] = useState<string | null>(null);
+  const [guides, setGuides] = useState<{ x?: number; y?: number; id: string }[]>([]);
 
   const containerRef = useRef<HTMLDivElement>(null);
   const dragStartPos = useRef({ x: 0, y: 0 });
@@ -92,20 +103,85 @@ const Canvas: React.FC<CanvasProps> = ({ state, onSelectNode, onSelectConnection
   const handleMouseMove = (e: React.MouseEvent) => {
     const worldPos = screenToWorld(e.clientX, e.clientY);
     if (mode === 'dragging' && activeId) {
-      onUpdateNode(activeId, {
-        x: nodeStartRect.current.x + (worldPos.x - dragStartPos.current.x),
-        y: nodeStartRect.current.y + (worldPos.y - dragStartPos.current.y)
-      }, false);
+      let nx = nodeStartRect.current.x + (worldPos.x - dragStartPos.current.x);
+      let ny = nodeStartRect.current.y + (worldPos.y - dragStartPos.current.y);
+
+      const node = state.nodes.find(n => n.id === activeId)!;
+      const newGuides: { x?: number; y?: number; id: string }[] = [];
+      const snapPoints = { x: nx, y: ny };
+
+      // Snap to Grid
+      snapPoints.x = snapToGrid(nx);
+      snapPoints.y = snapToGrid(ny);
+
+      // Alignment with other nodes
+      state.nodes.forEach(other => {
+        if (other.id === activeId) return;
+
+        // Vertical Alignment (x)
+        const xTargets = [
+          { val: other.x, type: 'left' },
+          { val: other.x + other.width / 2, type: 'center' },
+          { val: other.x + other.width, type: 'right' }
+        ];
+        const selfXTargets = [
+          { val: nx, offset: 0 },
+          { val: nx + node.width / 2, offset: node.width / 2 },
+          { val: nx + node.width, offset: node.width }
+        ];
+
+        selfXTargets.forEach(self => {
+          xTargets.forEach(target => {
+            if (Math.abs(self.val - target.val) < SNAP_THRESHOLD) {
+              snapPoints.x = target.val - self.offset;
+              newGuides.push({ x: target.val, id: `v-${other.id}-${target.type}` });
+            }
+          });
+        });
+
+        // Horizontal Alignment (y)
+        const yTargets = [
+          { val: other.y, type: 'top' },
+          { val: other.y + other.height / 2, type: 'middle' },
+          { val: other.y + other.height, type: 'bottom' }
+        ];
+        const selfYTargets = [
+          { val: ny, offset: 0 },
+          { val: ny + node.height / 2, offset: node.height / 2 },
+          { val: ny + node.height, offset: node.height }
+        ];
+
+        selfYTargets.forEach(self => {
+          yTargets.forEach(target => {
+            if (Math.abs(self.val - target.val) < SNAP_THRESHOLD) {
+              snapPoints.y = target.val - self.offset;
+              newGuides.push({ y: target.val, id: `h-${other.id}-${target.type}` });
+            }
+          });
+        });
+      });
+
+      setGuides(newGuides);
+      onUpdateNode(activeId, { x: snapPoints.x, y: snapPoints.y }, false);
     } else if (mode === 'resizing' && activeId && resizeHandle.current) {
       const dx = worldPos.x - dragStartPos.current.x;
       const dy = worldPos.y - dragStartPos.current.y;
       let { x, y, w, h } = nodeStartRect.current;
       const hdl = resizeHandle.current;
+
       if (hdl.includes('e')) w += dx;
       if (hdl.includes('w')) { x += dx; w -= dx; }
       if (hdl.includes('s')) h += dy;
       if (hdl.includes('n')) { y += dy; h -= dy; }
-      onUpdateNode(activeId, { x, y, width: Math.max(20, w), height: Math.max(20, h) }, false);
+
+      // Snap size
+      w = Math.max(20, snapToGrid(w));
+      h = Math.max(20, snapToGrid(h));
+      // Adjust x/y if w/h changed via west/north handles
+      if (hdl.includes('w')) x = nodeStartRect.current.x + nodeStartRect.current.w - w;
+      if (hdl.includes('n')) y = nodeStartRect.current.y + nodeStartRect.current.h - h;
+
+      onUpdateNode(activeId, { x, y, width: w, height: h }, false);
     } else if (mode === 'connecting') {
       setTempConn(prev => prev ? { ...prev, x2: worldPos.x, y2: worldPos.y } : null);
     } else if (mode === 'panning') {
@@ -122,7 +198,7 @@ const Canvas: React.FC<CanvasProps> = ({ state, onSelectNode, onSelectConnection
       const targetNode = state.nodes.find(n => n.id !== activeId && tempConn.x2 >= n.x && tempConn.x2 <= n.x + n.width && tempConn.y2 >= n.y && tempConn.y2 <= n.y + n.height);
       if (targetNode) onAddConnection(activeId, targetNode.id);
     }
-    setMode('none'); setActiveId(null); setTempConn(null); resizeHandle.current = null;
+    setMode('none'); setActiveId(null); setTempConn(null); resizeHandle.current = null; setGuides([]);
   };
 
   const handleNodeMouseDown = (e: React.MouseEvent, id: string) => {
@@ -255,52 +331,87 @@ const Canvas: React.FC<CanvasProps> = ({ state, onSelectNode, onSelectConnection
         <svg className="absolute top-0 left-0 w-[10000px] h-[10000px] pointer-events-none overflow-visible">
           {state.connections.map(c => renderConnection(c))}
           {tempConn && renderConnection(null, tempConn)}
+
+          {/* Alignment Guides */}
+          {guides.map(guide => (
+            <line
+              key={guide.id}
+              x1={guide.x !== undefined ? guide.x : -5000}
+              y1={guide.y !== undefined ? guide.y : -5000}
+              x2={guide.x !== undefined ? guide.x : 5000}
+              y2={guide.y !== undefined ? guide.y : 5000}
+              stroke="#137fec"
+              strokeWidth={1 / state.zoom}
+              strokeDasharray={`${4 / state.zoom} ${2 / state.zoom}`}
+              className="opacity-40"
+            />
+          ))}
         </svg>
 
-        {state.nodes.map(node => (
-          <div key={node.id} onMouseDown={(e) => handleNodeMouseDown(e, node.id)} onDoubleClick={() => state.activeTool === 'select' && setEditingId(node.id)}
-            className={`absolute ${state.selectedNodeId === node.id ? 'z-20' : 'z-10'} ${state.activeTool === 'select' ? 'cursor-move' : ''}`} style={{ left: node.x, top: node.y, width: node.width, height: node.height }}>
-            <svg width={node.width} height={node.height} className="absolute top-0 left-0 overflow-visible">
-              <ShapeRenderer node={node} isSelected={state.selectedNodeId === node.id} />
-            </svg>
-            <div className="absolute inset-0 flex items-center justify-center p-2 pointer-events-none overflow-hidden">
-              {editingId === node.id ? (
-                <textarea autoFocus className="w-full h-full bg-transparent border-none outline-none resize-none text-center pointer-events-auto"
-                  style={{ fontSize: node.fontSize, fontFamily: node.fontFamily, fontWeight: node.fontWeight, color: node.textColor, textAlign: node.textAlign }}
-                  value={node.text} onChange={(e) => onUpdateNode(node.id, { text: e.target.value }, false)} onBlur={() => { setEditingId(null); onPushHistory(); }} />
-              ) : (
-                <span className="text-center w-full break-words select-none leading-tight" style={{ fontSize: node.fontSize, fontWeight: node.fontWeight, textAlign: node.textAlign, fontFamily: node.fontFamily, color: node.textColor }}>
-                  {node.text}
-                </span>
+        <AnimatePresence>
+          {state.nodes.map(node => (
+            <motion.div
+              key={node.id}
+              layout
+              initial={{ scale: 0.8, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.8, opacity: 0 }}
+              transition={{ type: 'spring', damping: 25, stiffness: 300, layout: { duration: 0.1 } }}
+              onMouseDown={(e) => handleNodeMouseDown(e, node.id)}
+              onDoubleClick={() => state.activeTool === 'select' && setEditingId(node.id)}
+              className={`absolute ${state.selectedNodeId === node.id ? 'z-20' : 'z-10'} ${state.activeTool === 'select' ? 'cursor-move' : ''}`}
+              style={{ left: node.x, top: node.y, width: node.width, height: node.height }}
+            >
+              <svg width={node.width} height={node.height} className="absolute top-0 left-0 overflow-visible">
+                <ShapeRenderer node={node} isSelected={state.selectedNodeId === node.id} />
+              </svg>
+              <div className="absolute inset-0 flex items-center justify-center p-2 pointer-events-none overflow-hidden">
+                {editingId === node.id ? (
+                  <textarea
+                    autoFocus
+                    className="w-full h-full bg-transparent border-none outline-none resize-none text-center pointer-events-auto dark:text-gray-100"
+                    style={{ fontSize: node.fontSize, fontFamily: node.fontFamily, fontWeight: node.fontWeight, color: node.textColor, textAlign: node.textAlign }}
+                    value={node.text}
+                    onChange={(e) => onUpdateNode(node.id, { text: e.target.value }, false)}
+                    onBlur={() => { setEditingId(null); onPushHistory(); }}
+                  />
+                ) : (
+                  <span
+                    className="text-center w-full break-words select-none leading-tight dark:text-gray-100"
+                    style={{ fontSize: node.fontSize, fontWeight: node.fontWeight, textAlign: node.textAlign, fontFamily: node.fontFamily, color: node.textColor }}
+                  >
+                    {node.text}
+                  </span>
+                )}
+              </div>
+              {state.selectedNodeId === node.id && editingId !== node.id && state.activeTool === 'select' && (
+                <>
+                  {['nw', 'n', 'ne', 'e', 'se', 's', 'sw', 'w'].map(h => (
+                    <div key={h} onMouseDown={(e) => handleResizeStart(e, node, h)} className={`absolute w-3 h-3 bg-white dark:bg-slate-700 border-2 border-[#137fec] z-30 cursor-${h}-resize shadow-sm hover:scale-125 transition-transform`}
+                      style={{ left: h.includes('w') ? -4 : h.includes('e') ? '100%' : '50%', top: h.includes('n') ? -4 : h.includes('s') ? '100%' : '50%', transform: 'translate(-50%, -50%)' }} />
+                  ))}
+                  {(['top', 'right', 'bottom', 'left'] as const).map(s => (
+                    <div key={s} onMouseDown={(e) => handleConnectStart(e, node, s)} className="absolute w-4 h-4 bg-white dark:bg-slate-800 border border-[#137fec] rounded-full flex items-center justify-center cursor-crosshair hover:bg-[#137fec] hover:text-white transition-all shadow-md z-40"
+                      style={{ top: s === 'top' ? -12 : s === 'bottom' ? 'calc(100% + 12px)' : '50%', left: s === 'left' ? -12 : s === 'right' ? 'calc(100% + 12px)' : '50%', transform: 'translate(-50%, -50%)' }}>
+                      <span className="material-symbols-outlined text-[10px] font-bold">add</span>
+                    </div>
+                  ))}
+                </>
               )}
-            </div>
-            {state.selectedNodeId === node.id && editingId !== node.id && state.activeTool === 'select' && (
-              <>
-                {['nw', 'n', 'ne', 'e', 'se', 's', 'sw', 'w'].map(h => (
-                  <div key={h} onMouseDown={(e) => handleResizeStart(e, node, h)} className={`absolute w-3 h-3 bg-white border-2 border-[#137fec] z-30 cursor-${h}-resize shadow-sm hover:scale-125 transition-transform`}
-                    style={{ left: h.includes('w') ? -4 : h.includes('e') ? '100%' : '50%', top: h.includes('n') ? -4 : h.includes('s') ? '100%' : '50%', transform: 'translate(-50%, -50%)' }} />
-                ))}
-                {(['top', 'right', 'bottom', 'left'] as const).map(s => (
-                  <div key={s} onMouseDown={(e) => handleConnectStart(e, node, s)} className="absolute w-4 h-4 bg-white border border-[#137fec] rounded-full flex items-center justify-center cursor-crosshair hover:bg-[#137fec] hover:text-white transition-all shadow-md z-40"
-                    style={{ top: s === 'top' ? -12 : s === 'bottom' ? 'calc(100% + 12px)' : '50%', left: s === 'left' ? -12 : s === 'right' ? 'calc(100% + 12px)' : '50%', transform: 'translate(-50%, -50%)' }}>
-                    <span className="material-symbols-outlined text-[10px] font-bold">add</span>
-                  </div>
-                ))}
-              </>
-            )}
-          </div>
-        ))}
+            </motion.div>
+          ))}
+        </AnimatePresence>
       </div>
       <div className="absolute bottom-6 left-6 flex flex-col items-start gap-2 z-20">
         <button
           onClick={() => onPan({ x: 50, y: 50 })}
-          className="flex items-center justify-center w-10 h-10 shrink-0 aspect-square bg-white border border-gray-200 rounded-lg shadow-lg text-gray-500 hover:text-[#137fec] transition-colors"
+          className="flex items-center justify-center w-10 h-10 shrink-0 aspect-square bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-lg shadow-lg text-gray-500 dark:text-gray-400 hover:text-[#137fec] dark:hover:text-[#137fec] transition-colors"
           title="Reset View"
         >
           <span className="material-symbols-outlined text-[20px]">center_focus_strong</span>
         </button>
       </div>
-      <div className="absolute bottom-6 right-6 px-3 py-1.5 bg-black/5 text-[10px] text-gray-500 rounded-full font-medium shadow-sm">Shift+Drag: Pan • H: Hand Tool • V: Select Tool • Click Connection: Select</div>
+      <div className="absolute bottom-6 right-6 px-3 py-1.5 bg-black/5 dark:bg-white/5 text-[10px] text-gray-500 dark:text-gray-400 rounded-full font-medium shadow-sm">Shift+Drag: Pan • H: Hand Tool • V: Select Tool • Click Connection: Select</div>
     </div>
   );
 };
