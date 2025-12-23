@@ -291,10 +291,10 @@ const Canvas: React.FC<CanvasProps> = ({ state, onSelectNode, onSelectConnection
           </div>
         ))}
       </div>
-      <div className="absolute bottom-6 left-6 flex flex-col gap-2 z-20">
+      <div className="absolute bottom-6 left-6 flex flex-col items-start gap-2 z-20">
         <button
           onClick={() => onPan({ x: 50, y: 50 })}
-          className="flex items-center justify-center w-10 h-10 bg-white border border-gray-200 rounded-lg shadow-lg text-gray-500 hover:text-[#137fec] transition-colors"
+          className="flex items-center justify-center w-10 h-10 shrink-0 aspect-square bg-white border border-gray-200 rounded-lg shadow-lg text-gray-500 hover:text-[#137fec] transition-colors"
           title="Reset View"
         >
           <span className="material-symbols-outlined text-[20px]">center_focus_strong</span>
