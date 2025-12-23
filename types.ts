@@ -2,6 +2,13 @@
 export type ShapeType = 'rect' | 'circle' | 'diamond' | 'triangle' | 'database' | 'document' | 'io' | 'hexagon' | 'cloud' | 'cylinder' | 'parallelogram' | 'text';
 export type InteractionTool = 'select' | 'hand';
 
+export interface DiagramMetadata {
+  firstName: string;
+  lastName: string;
+  group: string;
+  topic: string;
+}
+
 export interface DiagramNode {
   id: string;
   type: ShapeType;
@@ -36,10 +43,12 @@ export interface HistoryItem {
   nodes: DiagramNode[];
   connections: Connection[];
   diagramName: string;
+  metadata?: DiagramMetadata;
 }
 
 export interface AppState {
   diagramName: string;
+  metadata: DiagramMetadata;
   nodes: DiagramNode[];
   connections: Connection[];
   selectedNodeId: string | null;

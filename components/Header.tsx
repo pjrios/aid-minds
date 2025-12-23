@@ -1,9 +1,10 @@
 
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState } from 'react';
 
 interface HeaderProps {
   diagramName: string;
-  setDiagramName: (name: string) => void;
+  metadata: { firstName: string; lastName: string; group: string; topic: string };
+  onEditMetadata: () => void;
   onNew: () => void;
   onImport: () => void;
   onExport: () => void;
@@ -12,25 +13,13 @@ interface HeaderProps {
   onRedo: () => void;
   onDelete: () => void;
   onResetView: () => void;
-  onEditStateChange?: (isEditing: boolean) => void;
 }
 
 const Header: React.FC<HeaderProps> = ({
-  diagramName, setDiagramName, onNew, onImport, onExport, onExportImage,
-  onUndo, onRedo, onDelete, onResetView, onEditStateChange
+  diagramName, metadata, onEditMetadata, onNew, onImport, onExport, onExportImage,
+  onUndo, onRedo, onDelete, onResetView
 }) => {
   const [activeMenu, setActiveMenu] = useState<string | null>(null);
-  const [isEditingName, setIsEditingName] = useState(false);
-  const nameInputRef = useRef<HTMLInputElement>(null);
-
-  useEffect(() => {
-    if (isEditingName) {
-      nameInputRef.current?.focus();
-      onEditStateChange?.(true);
-    } else {
-      onEditStateChange?.(false);
-    }
-  }, [isEditingName, onEditStateChange]);
 
   const closeMenu = () => setActiveMenu(null);
 
@@ -62,24 +51,19 @@ const Header: React.FC<HeaderProps> = ({
           <span className="material-symbols-outlined text-[20px]">hub</span>
         </div>
         <div className="relative">
-          {isEditingName ? (
-            <input
-              ref={nameInputRef}
-              type="text"
-              value={diagramName}
-              onChange={(e) => setDiagramName(e.target.value)}
-              onBlur={() => setIsEditingName(false)}
-              onKeyDown={(e) => e.key === 'Enter' && setIsEditingName(false)}
-              className="text-sm font-bold text-gray-900 leading-tight border-b-2 border-[#137fec] outline-none bg-transparent w-48"
-            />
-          ) : (
+          <div className="flex flex-col">
             <h1
-              onClick={() => setIsEditingName(true)}
-              className="text-sm font-bold text-gray-900 leading-tight cursor-text hover:text-[#137fec] transition-colors"
+              onClick={onEditMetadata}
+              className="text-sm font-bold text-gray-900 leading-tight cursor-pointer hover:text-[#137fec] transition-colors"
             >
-              {diagramName}
+              {metadata.firstName ? `${metadata.firstName} ${metadata.lastName}` : diagramName}
             </h1>
-          )}
+            {metadata.topic && (
+              <span className="text-[10px] text-gray-400 font-bold uppercase tracking-tight -mt-0.5">
+                {metadata.group} • {metadata.topic}
+              </span>
+            )}
+          </div>
 
           <nav className="flex gap-3 text-[11px] text-gray-500 font-medium mt-0.5">
             {Object.keys(menuItems).map(menu => (

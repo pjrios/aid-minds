@@ -2,6 +2,7 @@
 import React, { useState, useCallback, useEffect, useRef } from 'react';
 import { toPng } from 'html-to-image';
 import Header from './components/Header';
+import MetadataModal from './components/MetadataModal';
 import Toolbar from './components/Toolbar';
 import SidebarLeft from './components/SidebarLeft';
 import SidebarRight from './components/SidebarRight';
@@ -30,8 +31,10 @@ const INITIAL_NODES: DiagramNode[] = [
 
 const App: React.FC = () => {
   const canvasRef = useRef<HTMLDivElement>(null);
+  const [isMetadataModalOpen, setIsMetadataModalOpen] = useState(false);
   const [state, setState] = useState<AppState>({
     diagramName: 'Untitled Diagram',
+    metadata: { firstName: '', lastName: '', group: '', topic: '' },
     nodes: INITIAL_NODES,
     connections: [],
     selectedNodeId: null,
@@ -51,7 +54,8 @@ const App: React.FC = () => {
       history: [...prev.history, {
         nodes: [...prev.nodes],
         connections: [...prev.connections],
-        diagramName: prev.diagramName
+        diagramName: prev.diagramName,
+        metadata: { ...prev.metadata }
       }].slice(-50),
       future: []
     }));
@@ -67,8 +71,9 @@ const App: React.FC = () => {
         nodes: last.nodes,
         connections: last.connections,
         diagramName: last.diagramName,
+        metadata: last.metadata || prev.metadata,
         history: newHistory,
-        future: [{ nodes: prev.nodes, connections: prev.connections, diagramName: prev.diagramName }, ...prev.future]
+        future: [{ nodes: prev.nodes, connections: prev.connections, diagramName: prev.diagramName, metadata: prev.metadata }, ...prev.future]
       };
     });
   }, []);
@@ -83,8 +88,9 @@ const App: React.FC = () => {
         nodes: next.nodes,
         connections: next.connections,
         diagramName: next.diagramName,
+        metadata: next.metadata || prev.metadata,
         future: newFuture,
-        history: [...prev.history, { nodes: prev.nodes, connections: prev.connections, diagramName: prev.diagramName }]
+        history: [...prev.history, { nodes: prev.nodes, connections: prev.connections, diagramName: prev.diagramName, metadata: prev.metadata }]
       };
     });
   }, []);
@@ -203,6 +209,7 @@ const App: React.FC = () => {
     if (confirm('Create a new diagram? All unsaved changes will be lost.')) {
       setState({
         diagramName: 'Untitled Diagram',
+        metadata: { firstName: '', lastName: '', group: '', topic: '' },
         nodes: INITIAL_NODES,
         connections: [],
         selectedNodeId: null,
@@ -216,9 +223,22 @@ const App: React.FC = () => {
     }
   }, []);
 
+  const getStructuredFilename = useCallback((ext: string) => {
+    const { firstName, lastName, group, topic } = state.metadata;
+    if (!firstName || !lastName || !group || !topic) return null;
+    return `${firstName}_${lastName}_${group}_${topic}`.replace(/\s+/g, '_') + ext;
+  }, [state.metadata]);
+
   const handleExport = useCallback(() => {
+    const filename = getStructuredFilename('.json');
+    if (!filename) {
+      setIsMetadataModalOpen(true);
+      return;
+    }
+
     const data = JSON.stringify({
       diagramName: state.diagramName,
+      metadata: state.metadata,
       nodes: state.nodes,
       connections: state.connections
     }, null, 2);
@@ -226,13 +246,18 @@ const App: React.FC = () => {
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `${state.diagramName.replace(/\s+/g, '_')}.json`;
+    a.download = filename;
     a.click();
     URL.revokeObjectURL(url);
-  }, [state]);
+  }, [state, getStructuredFilename]);
 
   const handleExportImage = useCallback(async () => {
     if (!canvasRef.current) return;
+    const filename = getStructuredFilename('.png');
+    if (!filename) {
+      setIsMetadataModalOpen(true);
+      return;
+    }
 
     try {
       // Hide UI elements during capture
@@ -246,7 +271,7 @@ const App: React.FC = () => {
           margin: '0',
           padding: '0',
         },
-        skipLinks: true, // Skip processing some links that might cause CORS issues
+        skipLinks: true,
         cacheBust: true,
       });
 
@@ -254,14 +279,14 @@ const App: React.FC = () => {
       uiElements.forEach(el => (el as HTMLElement).style.display = '');
 
       const link = document.createElement('a');
-      link.download = `${state.diagramName.replace(/\s+/g, '_')}.png`;
+      link.download = filename;
       link.href = dataUrl;
       link.click();
     } catch (err) {
       console.error('Export image failed:', err);
       alert('Failed to export image. Please try again.');
     }
-  }, [state.diagramName]);
+  }, [getStructuredFilename]);
 
   const handleImport = useCallback(() => {
     const input = document.createElement('input');
@@ -277,6 +302,7 @@ const App: React.FC = () => {
           setState(prev => ({
             ...prev,
             diagramName: content.diagramName || 'Imported Diagram',
+            metadata: content.metadata || { firstName: '', lastName: '', group: '', topic: '' },
             nodes: content.nodes || [],
             connections: content.connections || [],
             selectedNodeId: null,
@@ -298,7 +324,8 @@ const App: React.FC = () => {
     <div className="flex flex-col h-screen w-screen bg-[#f6f7f8] overflow-hidden select-none">
       <Header
         diagramName={state.diagramName}
-        setDiagramName={(name) => setState(p => ({ ...p, diagramName: name }))}
+        metadata={state.metadata}
+        onEditMetadata={() => setIsMetadataModalOpen(true)}
         onNew={handleNew}
         onImport={handleImport}
         onExport={handleExport}
@@ -307,7 +334,6 @@ const App: React.FC = () => {
         onRedo={handleRedo}
         onDelete={handleDeleteSelected}
         onResetView={() => setState(p => ({ ...p, zoom: 1, pan: { x: 50, y: 50 } }))}
-        onEditStateChange={setIsAnyEditing}
       />
       <Toolbar
         activeTool={state.activeTool}
@@ -351,6 +377,17 @@ const App: React.FC = () => {
           />
         )}
       </div>
+
+      <MetadataModal
+        isOpen={isMetadataModalOpen}
+        onClose={() => setIsMetadataModalOpen(false)}
+        metadata={state.metadata}
+        onSave={(metadata) => {
+          pushToHistory();
+          setState(p => ({ ...p, metadata, diagramName: `${metadata.firstName} ${metadata.lastName} - ${metadata.topic}` }));
+          setIsMetadataModalOpen(false);
+        }}
+      />
     </div>
   );
 };
