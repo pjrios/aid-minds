@@ -209,8 +209,8 @@ const Canvas: React.FC<CanvasProps> = ({ state, onSelectNode, onSelectConnection
     const my = (y1 + y2) / 2;
 
     return (
-      <g 
-        key={conn?.id || 'temp'} 
+      <g
+        key={conn?.id || 'temp'}
         className="group"
         onMouseEnter={() => conn && setHoveredConnId(conn.id)}
         onMouseLeave={() => setHoveredConnId(null)}
@@ -230,7 +230,7 @@ const Canvas: React.FC<CanvasProps> = ({ state, onSelectNode, onSelectConnection
         />
         {(conn?.arrowEnd || customPoints) && renderArrowHead(x2, y2, angleEnd, color, arrowheadScale)}
         {conn?.arrowStart && renderArrowHead(x1, y1, angleStart, color, arrowheadScale)}
-        
+
         {conn?.text && (
           <foreignObject x={mx - 50} y={my - 12} width="100" height="24" className="pointer-events-none">
             <div className="flex items-center justify-center w-full h-full">
@@ -244,8 +244,8 @@ const Canvas: React.FC<CanvasProps> = ({ state, onSelectNode, onSelectConnection
     );
   };
 
-  const canvasCursor = state.activeTool === 'hand' 
-    ? (mode === 'panning' ? 'cursor-grabbing' : 'cursor-grab') 
+  const canvasCursor = state.activeTool === 'hand'
+    ? (mode === 'panning' ? 'cursor-grabbing' : 'cursor-grab')
     : 'cursor-default';
 
   return (
@@ -292,7 +292,13 @@ const Canvas: React.FC<CanvasProps> = ({ state, onSelectNode, onSelectConnection
         ))}
       </div>
       <div className="absolute bottom-6 left-6 flex flex-col gap-2 z-20">
-        <button onClick={() => onPan({ x: 50, y: 50 })} className="p-3 bg-white border border-gray-200 rounded-lg shadow-lg text-gray-500 hover:text-[#137fec] transition-colors" title="Reset View"><span className="material-symbols-outlined text-[20px]">center_focus_strong</span></button>
+        <button
+          onClick={() => onPan({ x: 50, y: 50 })}
+          className="flex items-center justify-center w-10 h-10 bg-white border border-gray-200 rounded-lg shadow-lg text-gray-500 hover:text-[#137fec] transition-colors"
+          title="Reset View"
+        >
+          <span className="material-symbols-outlined text-[20px]">center_focus_strong</span>
+        </button>
       </div>
       <div className="absolute bottom-6 right-6 px-3 py-1.5 bg-black/5 text-[10px] text-gray-500 rounded-full font-medium shadow-sm">Shift+Drag: Pan • H: Hand Tool • V: Select Tool • Click Connection: Select</div>
     </div>
