@@ -16,13 +16,7 @@ interface CanvasProps {
 type InteractionMode = 'none' | 'dragging' | 'resizing' | 'connecting' | 'panning';
 
 const ShapeRenderer: React.FC<{ node: DiagramNode; isSelected: boolean }> = ({ node, isSelected }) => {
-  const { width, height, type, fill: originalFill, stroke: originalStroke, strokeWidth } = node;
-  const isDark = document.documentElement.classList.contains('dark');
-
-  // Theme-aware default colors
-  const fill = (isDark && originalFill === '#ffffff') ? '#1e293b' : originalFill;
-  const stroke = (isDark && (originalStroke === '#111418' || originalStroke === '#000000')) ? '#94a3b8' : originalStroke;
-
+  const { width, height, type, fill, stroke, strokeWidth } = node;
   const sWidth = isSelected ? Math.max(strokeWidth, 2.5) : strokeWidth;
   const sColor = isSelected ? '#137fec' : stroke;
 
@@ -369,7 +363,7 @@ const Canvas: React.FC<CanvasProps> = ({ state, onSelectNode, onSelectConnection
                 {editingId === node.id ? (
                   <textarea
                     autoFocus
-                    className="w-full h-full bg-transparent border-none outline-none resize-none text-center pointer-events-auto dark:text-gray-100"
+                    className="w-full h-full bg-transparent border-none outline-none resize-none text-center pointer-events-auto"
                     style={{ fontSize: node.fontSize, fontFamily: node.fontFamily, fontWeight: node.fontWeight, color: node.textColor, textAlign: node.textAlign }}
                     value={node.text}
                     onChange={(e) => onUpdateNode(node.id, { text: e.target.value }, false)}
@@ -377,7 +371,7 @@ const Canvas: React.FC<CanvasProps> = ({ state, onSelectNode, onSelectConnection
                   />
                 ) : (
                   <span
-                    className="text-center w-full break-words select-none leading-tight dark:text-gray-100"
+                    className="text-center w-full break-words select-none leading-tight"
                     style={{ fontSize: node.fontSize, fontWeight: node.fontWeight, textAlign: node.textAlign, fontFamily: node.fontFamily, color: node.textColor }}
                   >
                     {node.text}
@@ -387,11 +381,11 @@ const Canvas: React.FC<CanvasProps> = ({ state, onSelectNode, onSelectConnection
               {state.selectedNodeId === node.id && editingId !== node.id && state.activeTool === 'select' && (
                 <>
                   {['nw', 'n', 'ne', 'e', 'se', 's', 'sw', 'w'].map(h => (
-                    <div key={h} onMouseDown={(e) => handleResizeStart(e, node, h)} className={`absolute w-3 h-3 bg-white dark:bg-slate-700 border-2 border-[#137fec] z-30 cursor-${h}-resize shadow-sm hover:scale-125 transition-transform`}
+                    <div key={h} onMouseDown={(e) => handleResizeStart(e, node, h)} className={`absolute w-3 h-3 bg-white border-2 border-[#137fec] z-30 cursor-${h}-resize shadow-sm hover:scale-125 transition-transform`}
                       style={{ left: h.includes('w') ? -4 : h.includes('e') ? '100%' : '50%', top: h.includes('n') ? -4 : h.includes('s') ? '100%' : '50%', transform: 'translate(-50%, -50%)' }} />
                   ))}
                   {(['top', 'right', 'bottom', 'left'] as const).map(s => (
-                    <div key={s} onMouseDown={(e) => handleConnectStart(e, node, s)} className="absolute w-4 h-4 bg-white dark:bg-slate-800 border border-[#137fec] rounded-full flex items-center justify-center cursor-crosshair hover:bg-[#137fec] hover:text-white transition-all shadow-md z-40"
+                    <div key={s} onMouseDown={(e) => handleConnectStart(e, node, s)} className="absolute w-4 h-4 bg-white border border-[#137fec] rounded-full flex items-center justify-center cursor-crosshair hover:bg-[#137fec] hover:text-white transition-all shadow-md z-40"
                       style={{ top: s === 'top' ? -12 : s === 'bottom' ? 'calc(100% + 12px)' : '50%', left: s === 'left' ? -12 : s === 'right' ? 'calc(100% + 12px)' : '50%', transform: 'translate(-50%, -50%)' }}>
                       <span className="material-symbols-outlined text-[10px] font-bold">add</span>
                     </div>
@@ -405,13 +399,13 @@ const Canvas: React.FC<CanvasProps> = ({ state, onSelectNode, onSelectConnection
       <div className="absolute bottom-6 left-6 flex flex-col items-start gap-2 z-20">
         <button
           onClick={() => onPan({ x: 50, y: 50 })}
-          className="flex items-center justify-center w-10 h-10 shrink-0 aspect-square bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-lg shadow-lg text-gray-500 dark:text-gray-400 hover:text-[#137fec] dark:hover:text-[#137fec] transition-colors"
+          className="flex items-center justify-center w-10 h-10 shrink-0 aspect-square bg-white border border-gray-200 rounded-lg shadow-lg text-gray-500 hover:text-[#137fec] transition-colors"
           title="Reset View"
         >
           <span className="material-symbols-outlined text-[20px]">center_focus_strong</span>
         </button>
       </div>
-      <div className="absolute bottom-6 right-6 px-3 py-1.5 bg-black/5 dark:bg-white/5 text-[10px] text-gray-500 dark:text-gray-400 rounded-full font-medium shadow-sm">Shift+Drag: Pan • H: Hand Tool • V: Select Tool • Click Connection: Select</div>
+      <div className="absolute bottom-6 right-6 px-3 py-1.5 bg-black/5 text-[10px] text-gray-500 rounded-full font-medium shadow-sm">Shift+Drag: Pan • H: Hand Tool • V: Select Tool • Click Connection: Select</div>
     </div>
   );
 };
